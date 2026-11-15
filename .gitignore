@@ -2,6 +2,12 @@
 data/raw/
 chroma_db/
 
+# Generated vector database
+data/vector_store/
+
+# Downloaded source documents
+data/raw/*.pdf
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
