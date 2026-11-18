@@ -6,7 +6,7 @@ from gpu_dev_assist.retrieve import Retriever
 from typing import Dict, Any, List
 
 class DataIngestion:
-    def __init__(self, data_dir: str = 'data/raw', chunk_size: int = 1000, chunk_overlap: int = 200, model_name: str = "all-MiniLM-L6-v2",
+    def __init__(self, data_dir: str = 'data/raw', chunk_size: int = 1000, chunk_overlap: int = 200, model_name: str = "BAAI/bge-small-en-v1.5",
                  collection_name: str = 'pdf_documents', persist_directory: str= 'data/vector_store'):
         self.data_dir = data_dir
         self.embed_pipe = ChunkingEmbeddingPipeline(chunk_size, chunk_overlap, model_name)

@@ -7,7 +7,7 @@ from sentence_transformers import SentenceTransformer
 from gpu_dev_assist.data_loader import load_all_documents
 
 class ChunkingEmbeddingPipeline:
-    def __init__(self, chunk_size: int = 1000, chunk_overlap: int = 200, model_name: str = "all-MiniLM-L6-v2"):
+    def __init__(self, chunk_size: int = 1000, chunk_overlap: int = 200, model_name: str = "BAAI/bge-small-en-v1.5"):
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.model = SentenceTransformer(model_name)
