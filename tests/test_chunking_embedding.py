@@ -1,13 +1,4 @@
 from gpu_dev_assist.chunking_embedding import ChunkingEmbeddingPipeline
-from gpu_dev_assist.data_loader import load_all_documents
-
-def test_chunking_embedding():
-    pipe = ChunkingEmbeddingPipeline()
-    chunks = pipe.chunk_documents(load_all_documents("data/raw"))
-    tok = pipe.model.tokenizer
-    lengths = [len(tok(c.page_content)["input_ids"]) for c in chunks]
-    over = sum(l > pipe.model.max_seq_length for l in lengths)
-    print(f"limit {pipe.model.max_seq_length}, max {max(lengths)}, over limit: {over} of {len(chunks)}")
 
 """Tests for chunk noise filtering."""
 
