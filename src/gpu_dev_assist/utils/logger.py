@@ -13,7 +13,7 @@ LOG_DIR.mkdir(exist_ok=True)
 
 LOG_FILE = LOG_DIR / f"{datetime.now().strftime('%m_%d_%Y_%H_%M_%S')}.log"
 
-logger = logging.getLogger("churn AI")
+logger = logging.getLogger("Gpu-dev-assist")
 logger.setLevel(logging.INFO)
 
 file_handler = logging.FileHandler(LOG_FILE)

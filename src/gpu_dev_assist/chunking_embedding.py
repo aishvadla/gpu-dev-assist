@@ -29,7 +29,8 @@ class ChunkingEmbeddingPipeline:
         logger.info(f"Finished document chunking")
         return clean_chunks
 
-    def is_noise(self, text: str) -> bool:
+    @staticmethod
+    def is_noise(text: str) -> bool:
         t = text.strip()
         if len(t) < 100:                       # title pages, stray headers
             return True
@@ -37,25 +38,12 @@ class ChunkingEmbeddingPipeline:
             return True
         return False
 
-    def generate_embeddings(self, chunks):
-        logger.info(f"Generating embeddings for {len(chunks)} chunks...")
-        if len(chunks) > 1:
-            texts = [chunk.page_content for chunk in chunks]
-        else:
-            texts = chunks
+    def generate_embeddings(self, texts: str):
+        logger.info(f"Generating embeddings for {len(texts)} chunks...")
         embeddings = self.model.encode(texts, show_progress_bar=True)
         logger.info(f"Embeddings shape: {embeddings.shape}")
+        logger.info(f"Finished embedding generation")
         return embeddings
 
     def get_embedding_model(self):
         return self.model
-        
-
-if __name__ == "__main__":
-    
-    docs = load_all_documents("data")
-    emb_pipe = ChunkingEmbeddingPipeline()
-    chunks = emb_pipe.chunk_documents(docs)
-    embeddings = emb_pipe.generate_embeddings(chunks)
-    print("Example embedding:", embeddings[0] if len(embeddings) > 0 else None)
-

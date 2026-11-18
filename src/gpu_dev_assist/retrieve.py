@@ -2,6 +2,7 @@ from gpu_dev_assist.data_loader import load_all_documents
 from gpu_dev_assist.chunking_embedding import ChunkingEmbeddingPipeline
 from gpu_dev_assist.vector_store import VectorStore
 from typing import Dict, Any, List
+from gpu_dev_assist.utils.logger import logger
 
 class Retriever:
     def __init__(self, vector_store:VectorStore, embed_pipe: ChunkingEmbeddingPipeline):
@@ -9,6 +10,7 @@ class Retriever:
         self.embed_pipe = embed_pipe
 
     def query_retrieve(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
+        logger.info(f"Retrieving context from the vector database...")
         # generate embedding for the query
         query_embedding = self.embed_pipe.generate_embeddings([query])[0]
 
@@ -16,6 +18,7 @@ class Retriever:
         # similarity search using cosine similarity
         results = self.vector_store.collection.query(query_embeddings=[query_embedding.tolist()], n_results=top_k)
 
+        logger.info(f"Completed context retrieval using query")
         return [
             {
                 "text": text,

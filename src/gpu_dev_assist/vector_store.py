@@ -2,6 +2,7 @@ import os
 import chromadb
 from typing import List, Any
 import numpy as np
+from gpu_dev_assist.utils.logger import logger
 
 from gpu_dev_assist.data_loader import load_all_documents
 from gpu_dev_assist.chunking_embedding import ChunkingEmbeddingPipeline
@@ -15,12 +16,14 @@ class VectorStore:
         self._initialize_vector_store()
 
     def _initialize_vector_store(self):
+        logger.info(f"Initiating vector store...")
         os.makedirs(self.persist_directory, exist_ok=True)
         self.client = chromadb.PersistentClient(path=self.persist_directory)
         self.collection = self.client.get_or_create_collection(name=self.collection_name, metadata={"description":"pdf document embeddings for RAG", "hnsw:space": "cosine"})
-        print(f"vector store initialized")
+        logger.info(f"vector store initialized")
 
     def add_documents(self, documents:List[Any], embeddings: np.ndarray):
+        logger.info(f"Adding documents to the vector store...")
         ids = []
         metadatas = []
         documents_text = []
@@ -36,8 +39,8 @@ class VectorStore:
 
         self.collection.add(ids=ids, metadatas=metadatas, documents=documents_text, embeddings=embeddings.tolist())
 
-        print(f"Added the {len(documents)} chunks to vector store")
-        print(f"number of chunks in the collection: {self.collection.count()}")
+        logger.info(f"Added the {len(documents)} chunks to vector store")
+        logger.info(f"Number of chunks in the collection: {self.collection.count()}")
 
 
 if __name__ == "__main__":

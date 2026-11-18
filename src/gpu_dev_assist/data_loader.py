@@ -1,10 +1,13 @@
 import os
 from langchain_community.document_loaders import PyMuPDFLoader
 from pathlib import Path
+from gpu_dev_assist.utils.logger import logger
 
 ### Read all the pdf's inside the directory
 def load_all_documents(pdf_directory):
     """Process all PDF files in a directory"""
+    
+    logger.info(f"Loading the files into Documents...")
     all_documents = []
     pdf_dir = Path(pdf_directory)
     

@@ -1,7 +1,7 @@
 [project]
 name = "gpu-dev-assist"
 version = "0.1.0"
-description = "Add your description here"
+description = "GPU Development Assistant"
 readme = "README.md"
 authors = [
     { email = "aish.vadlamudi@gmail.com" }
@@ -28,4 +28,9 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "ipykernel>=7.4.0",
+    "pytest>=9.2.0",
 ]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
