@@ -41,14 +41,3 @@ class VectorStore:
 
         logger.info(f"Added the {len(documents)} chunks to vector store")
         logger.info(f"Number of chunks in the collection: {self.collection.count()}")
-
-
-if __name__ == "__main__":
-    
-    docs = load_all_documents("data")
-    emb_pipe = ChunkingEmbeddingPipeline()
-    chunks = emb_pipe.chunk_documents(docs)
-    embeddings = emb_pipe.generate_embeddings(chunks)
-    vector_store = VectorStore()
-    vector_store.add_documents(chunks, embeddings)
-    

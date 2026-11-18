@@ -34,20 +34,12 @@ class Retriever:
 
 if __name__ == "__main__":
 
-    # loading all documents
-    docs = load_all_documents("data")
-
-    # Document chunking and converting them to embeddings
     emb_pipe = ChunkingEmbeddingPipeline()
-    chunks = emb_pipe.chunk_documents(docs)
-    embeddings = emb_pipe.generate_embeddings(chunks)
-
-    # Storing the chunks and embeddings to a vector store database
     vector_store = VectorStore()
-    vector_store.add_documents(chunks, embeddings)
 
     # Retieval using a query
     retrival_obj = Retriever(vector_store, emb_pipe)
     query = 'what is oneapi programming model?'
     retieval_results = retrival_obj.query_retrieve(query, top_k=5)
-    print(retieval_results)
+    for r in retieval_results:
+                print(r["page"], r["distance"], r["text"][:80].replace("\n", " "))
