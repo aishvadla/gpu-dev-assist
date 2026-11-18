@@ -22,6 +22,7 @@ class DataIngestion:
         embeddings = self.embed_pipe.generate_embeddings([chunk.page_content for chunk in chunks])
 
         # Store the documents and embeddings to vector database
+        self.vector_store.reset()
         self.vector_store.add_documents(chunks, embeddings)
         logger.info(f"Completed data ingestion.")
 

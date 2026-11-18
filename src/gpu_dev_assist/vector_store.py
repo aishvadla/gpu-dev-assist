@@ -16,11 +16,14 @@ class VectorStore:
         self._initialize_vector_store()
 
     def _initialize_vector_store(self):
-        logger.info(f"Initiating vector store...")
         os.makedirs(self.persist_directory, exist_ok=True)
         self.client = chromadb.PersistentClient(path=self.persist_directory)
         self.collection = self.client.get_or_create_collection(name=self.collection_name, metadata={"description":"pdf document embeddings for RAG", "hnsw:space": "cosine"})
-        logger.info(f"vector store initialized")
+
+    def reset(self):
+        """Delete and recreate the collection, for a clean rebuild."""
+        self.client.delete_collection(self.collection_name)
+        self._initialize_vector_store()
 
     def add_documents(self, documents:List[Any], embeddings: np.ndarray):
         logger.info(f"Adding documents to the vector store...")
@@ -29,7 +32,7 @@ class VectorStore:
         documents_text = []
 
         for i, document in enumerate(documents):
-            metadata = document.metadata
+            metadata = dict(document.metadata)
             metadata['doc_index'] = i
             metadata['content_length'] = len(document.page_content)
             metadatas.append(metadata)
