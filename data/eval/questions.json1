@@ -1,4 +1,0 @@
-{"id": "q001", "question": "What is the oneAPI programming model?", "type": "conceptual", "answerable": true, "relevant_pages": {"programming_guide": [4, 5, 6, 7]}, "reference": "A unified programming model for heterogeneous computing, supporting SYCL (Data Parallel C++) and OpenMP offload, with single-source compilation."}
-{"id": "q002", "question": "When should I use shared local memory in a SYCL kernel?", "type": "domain_term", "answerable": true, "relevant_pages": {"optimization_guide": []}, "reference": ""}
-{"id": "q003", "question": "What is NVIDIA's CUDA warp size?", "type": "exact_term", "answerable": true, "relevant_pages": {"optimization_guide": [196]}, "reference": "32: a SYCL sub-group maps to a CUDA warp of size 32."}
-{"id": "q004", "question": "How does multi-head attention work?", "type": "unanswerable", "answerable": false, "relevant_pages": {}, "reference": ""}

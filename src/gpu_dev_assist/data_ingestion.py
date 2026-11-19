@@ -1,13 +1,13 @@
 from gpu_dev_assist.utils.logger import logger
 from gpu_dev_assist.data_loader import load_all_documents
 from gpu_dev_assist.chunking_embedding import ChunkingEmbeddingPipeline
-from gpu_dev_assist.vector_store import VectorStore
+from gpu_dev_assist.vector_store import VectorStore, DEFAULT_STORE
 from gpu_dev_assist.dense_retrieve import DenseRetriever
 from typing import Dict, Any, List
 
 class DataIngestion:
     def __init__(self, data_dir: str = 'data/raw', chunk_size: int = 1000, chunk_overlap: int = 200, model_name: str = "BAAI/bge-small-en-v1.5",
-                 collection_name: str = 'pdf_documents', persist_directory: str= 'data/vector_store'):
+                 collection_name: str = 'pdf_documents', persist_directory: str= DEFAULT_STORE):
         self.data_dir = data_dir
         self.embed_pipe = ChunkingEmbeddingPipeline(chunk_size, chunk_overlap, model_name)
         self.vector_store = VectorStore(collection_name, persist_directory)
