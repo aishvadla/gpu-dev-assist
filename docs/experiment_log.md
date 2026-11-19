@@ -83,9 +83,29 @@ Prompt design: numbered sources in the prompt; every factual sentence must cite 
 
 ---
 
+---
+
+## 2026-11-18: Shared local memory false refusal diagnosed (retrieval miss)
+
+**Diagnosis.** For "When should I use shared local memory in a SYCL kernel?", dense retrieval's top 10 were almost entirely about **Unified Shared Memory** (`malloc_shared`, shared allocations; pages 128, 142, 143, 145). The pages that actually discuss shared local memory / SLM (9, 16, 40, 57, 64–72, 98) were absent. The model refused correctly: it was given six chunks about a different topic.
+
+**Cause.** "Shared local memory" (work-group scratchpad, `local_accessor`) and "Unified Shared Memory" (pointer-based host/device allocations) are unrelated concepts that share a word. A general-purpose embedding model treats them as similar; a GPU engineer doesn't.
+
+**BM25 check (same chunks).**
+
+| | Dense (bge-small) | BM25 |
+|---|---|---|
+| SLM pages in top 10 | 0 | 6 (98, 16, 72, 57, 280, 64) |
+| SLM pages in top 5 | 0 | 3 (98, 16, 72) |
+| Other results | USM pages | Code chunks (64, 72) and partial matches (327, 395, 151) |
+
+**Takeaway.** Dense retrieval understands meaning but confuses similar-sounding domain terms; BM25 matches exact terms but can't tell explanation from code or partial matches. Next: hybrid retrieval with reciprocal rank fusion, compared on the evaluation set. Gold page for this question: TBD (to label).
+
+---
+
 ## Open questions
 
-- [ ] Shared local memory: are the relevant pages in the top 10 for that query? (retrieval vs prompt)
+- [x] Shared local memory: retrieval miss, not the prompt. Dense retrieval returned Unified Shared Memory pages (see 2026-11-18).
 - [x] How many chunks exceed the embedding model's input limit? 42% with MiniLM; fixed by switching to bge-small (see 2026-11-18).
 - [ ] Does BM25 or hybrid retrieval fix exact-phrase queries like "shared local memory"?
 
