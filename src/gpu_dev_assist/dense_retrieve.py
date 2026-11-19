@@ -4,7 +4,7 @@ from gpu_dev_assist.vector_store import VectorStore
 from typing import Dict, Any, List
 from gpu_dev_assist.utils.logger import logger
 
-class Retriever:
+class DenseRetriever:
     def __init__(self, vector_store:VectorStore, embed_pipe: ChunkingEmbeddingPipeline):
         self.vector_store = vector_store
         self.embed_pipe = embed_pipe
@@ -38,7 +38,7 @@ if __name__ == "__main__":
     vector_store = VectorStore()
 
     # Retieval using a query
-    retrival_obj = Retriever(vector_store, emb_pipe)
+    retrival_obj = DenseRetriever(vector_store, emb_pipe)
     query = 'what is oneapi programming model?'
     retieval_results = retrival_obj.query_retrieve(query, top_k=5)
     for r in retieval_results:

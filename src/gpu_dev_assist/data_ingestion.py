@@ -2,7 +2,7 @@ from gpu_dev_assist.utils.logger import logger
 from gpu_dev_assist.data_loader import load_all_documents
 from gpu_dev_assist.chunking_embedding import ChunkingEmbeddingPipeline
 from gpu_dev_assist.vector_store import VectorStore
-from gpu_dev_assist.retrieve import Retriever
+from gpu_dev_assist.dense_retrieve import DenseRetriever
 from typing import Dict, Any, List
 
 class DataIngestion:
@@ -33,7 +33,7 @@ if __name__ == "__main__":
     dataingestion_obj.initiate_data_ingestion()
 
     # Retieval using a query
-    retriever = Retriever(dataingestion_obj.vector_store, dataingestion_obj.embed_pipe)
+    retriever = DenseRetriever(dataingestion_obj.vector_store, dataingestion_obj.embed_pipe)
     query = 'what is oneapi programming model?'
     retieval_results = retriever.query_retrieve(query, top_k=5)
     for r in retieval_results:
