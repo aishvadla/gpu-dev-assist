@@ -5,8 +5,8 @@ import re
 import anthropic
 from dotenv import load_dotenv
 
-from gpu_dev_assist.dense_retrieve import DenseRetriever
 from gpu_dev_assist.utils.logger import logger
+from gpu_dev_assist.hybrid_retrieve import build_retrievers
 
 load_dotenv()
 
@@ -31,7 +31,7 @@ def build_context(results: list[dict]) -> str:
 
 
 class AnswerGenerator:
-    def __init__(self, retriever: DenseRetriever, client=None, model: str = MODEL):
+    def __init__(self, retriever, client=None, model: str = MODEL):
         self.retriever = retriever
         self.client = client or anthropic.Anthropic()
         self.model = model
@@ -68,7 +68,8 @@ if __name__ == "__main__":
     from gpu_dev_assist.chunking_embedding import ChunkingEmbeddingPipeline
     from gpu_dev_assist.vector_store import VectorStore
 
-    generator = AnswerGenerator(DenseRetriever(VectorStore(), ChunkingEmbeddingPipeline()))
+    retrievers = build_retrievers()
+    generator = AnswerGenerator(retrievers["dense"])
 
     for q in [
         "What is the oneAPI programming model?",
