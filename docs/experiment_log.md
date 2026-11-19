@@ -12,7 +12,7 @@ A running record of setups, results and decisions. The README's evaluation and d
 | Loader | LangChain `PyPDFLoader`, one document per page (keeps page metadata) |
 | Chunking | `RecursiveCharacterTextSplitter`, 1000 characters, 200 overlap, split within pages |
 | Chunks | 1,585 after noise filtering |
-| Embeddings | `all-MiniLM-L6-v2` (384 dimensions, 256-token input limit) |
+| Embeddings | `BAAI/bge-small-en-v1.5` (384 dimensions, 512-token input limit); was `all-MiniLM-L6-v2` until 2026-11-18 |
 | Vector store | Chroma, persistent, cosine distance |
 | LLM | Claude Haiku via the Anthropic API |
 | Retrieval | Top 6 by cosine similarity |
@@ -57,10 +57,36 @@ Prompt design: numbered sources in the prompt; every factual sentence must cite 
 
 ---
 
+## 2026-11-18: Embedding model input limit (MiniLM → bge-small)
+
+**Observation.** Chunks were longer than the embedding model could read. With 1000-character chunks, token counts (using the model's own tokenizer) were median 238, max 524. `all-MiniLM-L6-v2` reads at most 256 tokens, so 664 of 1,585 chunks (42%) were truncated before embedding. The full text is still stored and sent to the LLM, but anything past the limit couldn't contribute to retrieval.
+
+**Options considered.**
+- Smaller chunks (~600 characters): fits MiniLM, but nearly doubles the chunk count and splits explanations more often.
+- An embedding model with a longer input limit: keeps chunks intact.
+
+**Change.** Switched to `BAAI/bge-small-en-v1.5` (512-token limit, same 384 dimensions). Chunk size kept at 1000 so only one variable changed. Index fully rebuilt (embeddings from different models can't be mixed).
+
+**Result.**
+
+| | all-MiniLM-L6-v2 | bge-small-en-v1.5 |
+|---|---|---|
+| Input limit | 256 tokens | 512 tokens |
+| Chunks over the limit | 664 of 1,585 (42%) | 2 of 1,585 (0%) |
+| "What is the oneAPI programming model?" | Answered, cited (p. 5, 6, 7, 46) | Answered, cited (p. 4, 5, 6, 7, 46) |
+| "When should I use shared local memory in a SYCL kernel?" | False refusal | Still a false refusal |
+| "What is NVIDIA's CUDA warp size?" | Partial answer citing p. 60, with caveat | Exact refusal |
+
+**Takeaways.**
+1. Truncation is fixed, but it was **not** the cause of the shared local memory false refusal. Diagnosis pending (retrieval miss vs over-strict prompt).
+2. Changing the embedding model changed generation outcomes (the CUDA question), so evaluation must cover retrieval and answers together.
+
+---
+
 ## Open questions
 
 - [ ] Shared local memory: are the relevant pages in the top 10 for that query? (retrieval vs prompt)
-- [ ] How many chunks exceed MiniLM's 256-token limit? If many, reduce chunk size or switch embedding model.
+- [x] How many chunks exceed the embedding model's input limit? 42% with MiniLM; fixed by switching to bge-small (see 2026-11-18).
 - [ ] Does BM25 or hybrid retrieval fix exact-phrase queries like "shared local memory"?
 
 ---
@@ -71,6 +97,7 @@ Prompt design: numbered sources in the prompt; every factual sentence must cite 
 |---|---|
 | Public documentation only; PDFs not committed | Redistribution terms; sources listed in `data/sources.md` |
 | Chunk within pages | Every chunk keeps its page number for citations |
+| bge-small-en-v1.5 for embeddings | 512-token limit fits 1000-character chunks; MiniLM truncated 42% of them |
 | Noise filter before embedding | Title and contents pages were taking top-k slots (see 2026-11-17) |
 | Full index rebuild on each ingestion | `add` skips existing IDs, so tuned chunking would leave stale chunks |
 | The model cites `[n]`; code maps to pages | The model never writes page numbers, so it can't invent them |

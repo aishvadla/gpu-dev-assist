@@ -1,6 +1,7 @@
 # Project data and generated indexes
 data/raw/
 chroma_db/
+notebook/data
 
 # Generated vector database
 data/vector_store/
