@@ -1,4 +1,4 @@
-from gpu_dev_assist.evaluate import hit_at_k, ranked_pages, recall_at_k, reciprocal_rank
+from gpu_dev_assist.evaluate_retrieval import hit_at_k, ranked_pages, recall_at_k, reciprocal_rank
 
 A, B, C, D = ("doc", 1), ("doc", 2), ("doc", 3), ("doc", 4)
 
