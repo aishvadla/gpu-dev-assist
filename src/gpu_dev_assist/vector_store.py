@@ -3,12 +3,16 @@ import chromadb
 from typing import List, Any
 import numpy as np
 from gpu_dev_assist.utils.logger import logger
+from pathlib import Path
 
 from gpu_dev_assist.data_loader import load_all_documents
 from gpu_dev_assist.chunking_embedding import ChunkingEmbeddingPipeline
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]   # src/gpu_dev_assist/vector_store.py → repo root
+DEFAULT_STORE = str(PROJECT_ROOT / "data" / "vector_store")
+
 class VectorStore:
-    def __init__(self, collection_name: str = 'pdf_documents', persist_directory: str= 'data/vector_store'):
+    def __init__(self, collection_name: str = 'pdf_documents', persist_directory: str= DEFAULT_STORE):
         self.collection_name = collection_name
         self.persist_directory = persist_directory
         self.client = None
