@@ -65,18 +65,22 @@ class AnswerGenerator:
 
 
 if __name__ == "__main__":
-    from gpu_dev_assist.chunking_embedding import ChunkingEmbeddingPipeline
-    from gpu_dev_assist.vector_store import VectorStore
 
     retrievers = build_retrievers()
-    generator = AnswerGenerator(retrievers["dense"])
 
     for q in [
         "What is the oneAPI programming model?",
         "When should I use shared local memory in a SYCL kernel?",
         "What is NVIDIA's CUDA warp size?",
+        "How does multi-head attention work?"
     ]:
-        result = generator.answer(q)
-        print(f"\nQ: {q}\n{result['answer']}")
-        for s in result["sources"]:
-            print(f"  [{s['id']}] {s['source']}, p. {s['page']}")
+        for name, retriever in retrievers.items():
+            print(f"\n------------- Retreiver={name} ----- Question={q} -------------\n")
+            pages = [x["page"] for x in retriever.query_retrieve(q, top_k=6)]
+            print(f"  {name:7s} {pages}")
+
+            # Generation with hybrid retrieval
+            result = AnswerGenerator(retriever).answer(q)
+            print("\n" + result["answer"])
+            for s in result["sources"]:
+                print(f"  [{s['id']}] p. {s['page']}")

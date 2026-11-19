@@ -15,7 +15,7 @@ A running record of setups, results and decisions. The README's evaluation and d
 | Embeddings | `BAAI/bge-small-en-v1.5` (384 dimensions, 512-token input limit); was `all-MiniLM-L6-v2` until 2026-11-18 |
 | Vector store | Chroma, persistent, cosine distance |
 | LLM | Claude Haiku via the Anthropic API |
-| Retrieval | Top 6 by cosine similarity |
+| Retrieval | Top 6; dense (cosine), BM25 (`rank_bm25`) and hybrid (reciprocal rank fusion) available |
 
 ---
 
@@ -49,7 +49,7 @@ Prompt design: numbered sources in the prompt; every factual sentence must cite 
 |---|---|---|
 | What is the oneAPI programming model? | Answered, every sentence cited | Cited pages 5, 6, 7, 46, the same pages retrieval ranked highest. To do: spot-check page 46. |
 | When should I use shared local memory in a SYCL kernel? | **False refusal** | The optimization guide has a full section on shared local memory. Diagnosing: retrieval miss or over-strict prompt? |
-| What is NVIDIA's CUDA warp size? | Partial answer with caveat | Not truly unanswerable: page 60 mentions NVIDIA's 32 work-items per sub-group. The model cited it and said the docs don't confirm it. No fabrication. |
+| What is NVIDIA's CUDA warp size? | Partial answer with caveat | Answerable after all: p. 196 maps a SYCL sub-group to a CUDA warp of size 32 (found later via BM25). Here the model cited p. 60 and said the docs didn't confirm it. No fabrication. |
 
 **Takeaways for the evaluation set.**
 1. Verify "unanswerable" questions are really absent from the corpus (search the PDFs) before adding them.
@@ -83,8 +83,6 @@ Prompt design: numbered sources in the prompt; every factual sentence must cite 
 
 ---
 
----
-
 ## 2026-11-18: Shared local memory false refusal diagnosed (retrieval miss)
 
 **Diagnosis.** For "When should I use shared local memory in a SYCL kernel?", dense retrieval's top 10 were almost entirely about **Unified Shared Memory** (`malloc_shared`, shared allocations; pages 128, 142, 143, 145). The pages that actually discuss shared local memory / SLM (9, 16, 40, 57, 64–72, 98) were absent. The model refused correctly: it was given six chunks about a different topic.
@@ -99,7 +97,30 @@ Prompt design: numbered sources in the prompt; every factual sentence must cite 
 | SLM pages in top 5 | 0 | 3 (98, 16, 72) |
 | Other results | USM pages | Code chunks (64, 72) and partial matches (327, 395, 151) |
 
-**Takeaway.** Dense retrieval understands meaning but confuses similar-sounding domain terms; BM25 matches exact terms but can't tell explanation from code or partial matches. Next: hybrid retrieval with reciprocal rank fusion, compared on the evaluation set. Gold page for this question: TBD (to label).
+**Takeaway.** Dense retrieval understands meaning but confuses similar-sounding domain terms; BM25 matches exact terms but can't tell explanation from code or partial matches. Next: hybrid retrieval.
+
+**Debugging note.** The first diagnosis run returned nothing: a notebook resolved the relative path `data/vector_store` from the wrong folder and silently created a new, empty store. Fix: always check `collection.count()` (1,585) before trusting results; default store path to be built from the project root.
+
+---
+
+## 2026-11-18: Dense vs BM25 vs hybrid (RRF), first comparison
+
+**Setup.** Same 1,585 chunks. BM25 via `rank_bm25` with a simple lowercase tokenizer. Hybrid = reciprocal rank fusion (k = 60, 20 candidates from each method). Top 6 sent to the LLM. All three retrievers share one interface (`query_retrieve`), so the generator is unchanged.
+
+| Question | Dense | BM25 | Hybrid |
+|---|---|---|---|
+| What is the oneAPI programming model? | Answered (p. 7, 6, 5, 4, 46) | Answered, some noise (p. 184, 277) | Answered; lost p. 7 |
+| When should I use shared local memory in a SYCL kernel? | False refusal (USM pages) | Answered (p. 98, 16, 72, 57) | Answered (p. 57, 98) |
+| What is NVIDIA's CUDA warp size? | False refusal | Answered: 32 (p. 196) | Answered: 32 (p. 196) |
+| How does multi-head attention work? (not in the docs) | Refused | Refused | Refused |
+| **Correct behavior** | **2 / 4** | **4 / 4** | **4 / 4** |
+
+**Findings.**
+1. Hybrid fixed both dense failures, and no retriever produced an answer for the out-of-scope question: grounding held even when retrieval returned unrelated pages.
+2. The CUDA warp size question is answerable: p. 196 maps a SYCL sub-group to a CUDA warp of size 32. Dense missed it; BM25 matched the rare term "warp". Second time an assumed-unanswerable question had an answer in the corpus.
+3. Hybrid's SLM top 6 still contained Unified Shared Memory pages (142, 142, 128) inherited from dense. It answered correctly because enough good chunks got in, not because ranking was clean. Candidate fix: reranking.
+4. These questions all contain distinctive terms, which favors BM25. No conclusion until the evaluation set, including paraphrased questions.
+5. **Answers vary between runs.** With identical retrieved pages, the wording and cited sources changed between two runs. Retrieval metrics are deterministic; answer-level scores are noisy and should be reported as such (or averaged over repeated runs).
 
 ---
 
@@ -107,7 +128,10 @@ Prompt design: numbered sources in the prompt; every factual sentence must cite 
 
 - [x] Shared local memory: retrieval miss, not the prompt. Dense retrieval returned Unified Shared Memory pages (see 2026-11-18).
 - [x] How many chunks exceed the embedding model's input limit? 42% with MiniLM; fixed by switching to bge-small (see 2026-11-18).
-- [ ] Does BM25 or hybrid retrieval fix exact-phrase queries like "shared local memory"?
+- [x] Does BM25 or hybrid retrieval fix exact-phrase queries like "shared local memory"? Yes on the first 4 questions (hybrid 4/4 vs dense 2/4); to confirm on the evaluation set.
+- [ ] Gold pages and reference answer for the SLM question (q002).
+- [ ] Does a reranker remove the USM pages from hybrid's SLM results?
+- [ ] How do the three retrievers compare on paraphrased questions that don't reuse the document's wording?
 
 ---
 
@@ -123,3 +147,7 @@ Prompt design: numbered sources in the prompt; every factual sentence must cite 
 | The model cites `[n]`; code maps to pages | The model never writes page numbers, so it can't invent them |
 | Exact refusal sentence | Refusals can be checked with code, not a judge |
 | Generation errors are not swallowed | The answer is the product; the API layer will return a proper error |
+| Hybrid retrieval with reciprocal rank fusion | Dense confused domain terms (SLM vs USM) and missed rare terms ("warp"); RRF combines rankings without normalizing incompatible scores |
+| One retriever interface (`query_retrieve`) | Dense, BM25 and hybrid are interchangeable, so the generator and evaluation don't change |
+| Retrievers passed in, not built inside (dependency injection) | One shared store and model; fusion testable with fake retrievers |
+| "Unanswerable" evaluation questions verified by searching the PDFs | Two assumed-unanswerable questions turned out to be answerable |

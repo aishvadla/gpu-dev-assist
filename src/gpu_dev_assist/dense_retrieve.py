@@ -21,13 +21,14 @@ class DenseRetriever:
         logger.info(f"Completed context retrieval using query")
         return [
             {
+                "id": chunk_id,
                 "text": text,
                 "source": meta["source_file"],
                 "page": meta["page"] + 1,  # PyPDFLoader pages start at 0
                 "distance": round(dist, 3),
             }
-            for text, meta, dist in zip(
-                results["documents"][0], results["metadatas"][0], results["distances"][0]
+            for chunk_id, text, meta, dist in zip(
+                results["ids"][0], results["documents"][0], results["metadatas"][0], results["distances"][0]
             )
         ]
 
