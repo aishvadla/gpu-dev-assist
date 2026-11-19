@@ -2,6 +2,7 @@
 data/raw/
 chroma_db/
 notebook/data
+data/eval/results/
 
 # Generated vector database
 data/vector_store/

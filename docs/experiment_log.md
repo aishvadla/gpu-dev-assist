@@ -124,6 +124,42 @@ Prompt design: numbered sources in the prompt; every factual sentence must cite 
 
 ---
 
+## 2026-11-19: Retrieval evaluation on 33 answerable questions
+
+**Setup.** 40-question evaluation set (`data/eval/questions.jsonl`): 33 answerable with verified gold pages, 7 unanswerable (used later for refusal accuracy). Each retriever returns its top 10 chunks; pages are de-duplicated in rank order. Metrics: Hit@5, Recall@5, MRR@10.
+
+| Retriever | Hit@5 | Recall@5 | MRR@10 |
+|---|---|---|---|
+| Dense (bge-small) | 0.697 | 0.626 | 0.551 |
+| BM25 | 0.818 | 0.705 | **0.712** |
+| **Hybrid (RRF)** | **0.879** | **0.783** | 0.691 |
+
+**Hit@5 by question type** (n per type in brackets; one question = 10–14 points for most types):
+
+| Type | Dense | BM25 | Hybrid |
+|---|---|---|---|
+| Conceptual (7) | **1.00** | 0.86 | 0.86 |
+| Domain term (1) | 0.00 | 1.00 | 1.00 |
+| Exact term (10) | 0.60 | 0.80 | **1.00** |
+| Paraphrased (8) | 0.62 | 0.75 | 0.75 |
+| Reasoning (7) | 0.71 | 0.86 | 0.86 |
+
+**Findings.**
+1. Hybrid finds a relevant page for the most questions (29 of 33). BM25 has the best MRR: when it finds the page, it ranks it higher; fusion sometimes pulls a dense-only result above it.
+2. Dense is best on conceptual questions (7/7) and weakest on exact identifiers: it missed `warp` (q003), `sycl-ls` (q010) and `local_mem_size` (q022), and the SLM/USM confusion (q002).
+3. Hybrid fixed every exact-term miss (10/10).
+4. Paraphrased questions are the hardest for all methods (best 0.75), as intended.
+
+**Hybrid's 4 misses.**
+- **q024 (prefetching):** BM25 missed entirely: the question says "prefetching", the pages say "prefetch", and the tokenizer does no stemming. Hybrid found it at rank 7. Candidate fix: stemming in BM25.
+- **q036 (implicit scaling, paraphrased):** all three retrieved pages from the right chapter (297–319) but not p. 327. Checked: those pages don't state the answer, so this is a page-level miss, not a missing label.
+- **q034 (bank conflicts, paraphrased):** the paraphrase avoids the term "bank conflict" by design; no method connected it to p. 66.
+- **q021 (SIMD32 → SIMD16 SLM bug):** all three missed p. 65.
+
+**Caveats.** Small sample: per-type differences of one question are not meaningful. Gold labels found by keyword search and manual review; a relevant page with entirely different wording could be unlabeled, which affects Recall@5 most.
+
+---
+
 ## Open questions
 
 - [x] Shared local memory: retrieval miss, not the prompt. Dense retrieval returned Unified Shared Memory pages (see 2026-11-18).
