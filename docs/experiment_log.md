@@ -184,6 +184,61 @@ Prompt design: numbered sources in the prompt; every factual sentence must cite 
 
 ---
 
+## 2026-11-19: Snowball stemming in BM25
+
+**Hypothesis.** q024 asks about "prefetching"; the gold pages say "prefetch". BM25 matched exact tokens only, so it missed the page, and hybrid found it only at rank 7. Stemming should fix it.
+
+**Change.** `keyword_retrieve.tokenize` stems tokens with the Snowball English stemmer (`snowballstemmer`). Identifiers such as `local_mem_size` stay single tokens. Unit tests in `tests/test_keyword_retrieve.py`. The dense retriever is unaffected (its subword tokenizer is a different mechanism; the embedding model was already handling q024 at rank 3).
+
+**Retrieval, before → after** (33 answerable questions)
+
+| Retriever | Hit@5 | Recall@5 | MRR@10 |
+|---|---|---|---|
+| Dense | 0.697 → 0.697 | 0.626 → 0.626 | 0.551 → 0.551 |
+| BM25 | 0.818 → **0.879** | 0.705 → **0.758** | 0.712 → 0.672 |
+| Hybrid | 0.879 → 0.848 | 0.783 → 0.753 | 0.691 → **0.723** |
+
+**Hit@5 by type after stemming** (dense / BM25 / hybrid): conceptual 1.00 / 0.86 / 1.00; exact term 0.60 / 0.90 / 0.90; reasoning 0.71 / 0.86 / 0.86; paraphrased 0.62 / 0.88 / 0.62; domain term 0 / 1 / 1.
+
+**Per question**
+- **Hypothesis confirmed:** q024 hybrid rank 7 → **1**; BM25 not in top 10 → rank 5.
+- **BM25:** fixed q009, q024, q035; broke q011 (now rank 7). Net +2.
+- **Hybrid:** fixed q024; newly missed q007 (`queue.submit`) and q037 (EU active time, rank 7). Net −1.
+- **Fusion demotes BM25-only hits.** On q034 and q037, stemmed BM25 ranked the gold page 5th and 3rd, dense didn't rank it, and RRF (which rewards agreement) pushed it to 7th or out of the top 10.
+
+**Generation rerun** (hybrid, after stemming): answered 31/33, refused 7/7, citation hit 0.90 (28/31; was 0.94), faithfulness 0.97 (was 0.99). False refusals q021, q034; citation misses q007, q036, q037: all hybrid retrieval misses, as before. Six answers had one or two unsupported claims, mostly inferences beyond the retrieved text; the lowest (q037, 0.78) answered from the wrong pages and filled the gap with general knowledge. Part of the faithfulness change is run-to-run variation.
+
+**Decision.** Keep stemming: it is correct, fixed the diagnosed miss, and improved BM25 and hybrid MRR. Keep hybrid as the default, but don't claim it beats BM25: the difference is one question of 33, within noise. Hybrid is best or tied on 4 of 5 types and has the best MRR; real queries are vaguer than these, so the semantic signal is a safeguard. Next: a larger evaluation set, then weighted fusion favouring BM25.
+
+---
+
+## 2026-11-19: User-style questions (prediction recorded before running)
+
+**Why.** After stemming, BM25 and hybrid tied (29 vs 28 of 33). The stated reason for keeping hybrid, that it handles vaguer real-world questions better, had not been tested. The existing questions mostly reuse the documents' vocabulary.
+
+**Added.** q041–q050, type `user_style`: questions worded the way a developer would type them, avoiding the documents' terms (e.g. "a noticeable delay before the first kernel runs" for JIT compilation; "merging three small GPU steps" for kernel fusion). Gold pages verified against the PDFs with quoted excerpts. Written without running any retriever on them.
+
+**Prediction (written before running).** Hybrid will beat stemmed BM25 on Hit@5 for the `user_style` questions. If BM25 matches or beats hybrid, the default switches to BM25.
+
+**Result: prediction confirmed.**
+
+| Retriever | user_style Hit@5 | All 43: Hit@5 | Recall@5 | MRR@10 |
+|---|---|---|---|---|
+| Dense | 0.50 | 0.651 | 0.539 | 0.491 |
+| BM25 (stemmed) | 0.50 | 0.791 | 0.651 | 0.584 |
+| Hybrid | **0.70** | **0.814** | **0.671** | **0.666** |
+
+First relevant rank per question (dense / BM25 / hybrid; "-" = not in top 10):
+q041 - / 3 / 5 · q042 5 / 2 / 1 · q043 1 / 2 / 1 · q044 - / - / - · q045 2 / - / 3 · q046 - / 9 / - · q047 1 / - / 1 · q048 - / - / - · q049 - / 2 / 4 · q050 4 / 1 / 1
+
+- **Complementary failures.** Hybrid kept every question BM25 had in the top 5 and added q045 (CPU device selection) and q047 (GPU debugger), which only dense found. This is what fusion is for.
+- **Missed by all:** q044 (kernel fusion), q046 (GEMM padding), q048 (host USM allocation). Candidates for a reranker or query rewriting.
+- **Generation on all 50 questions:** answered 40/43, refused 7/7, citation hit 0.88 (35/40), faithfulness 0.98. False refusals q021, q034, q044; citation misses q007, q036, q037, q046, q048. All 8 failures are exactly hybrid's 8 retrieval misses. Lowest faithfulness: q048 (0.67), a citation miss where the model filled gaps with general knowledge.
+
+**Decision.** Hybrid stays the default, now with evidence: best overall on all three metrics over 43 questions and best on user-style wording. Caveat: 10 questions, written by the author (before any retriever was run on them).
+
+---
+
 ## Open questions
 
 - [x] Shared local memory: retrieval miss, not the prompt. Dense retrieval returned Unified Shared Memory pages (see 2026-11-18).
@@ -191,7 +246,10 @@ Prompt design: numbered sources in the prompt; every factual sentence must cite 
 - [x] Does BM25 or hybrid retrieval fix exact-phrase queries like "shared local memory"? Yes on the first 4 questions (hybrid 4/4 vs dense 2/4); to confirm on the evaluation set.
 - [ ] Gold pages and reference answer for the SLM question (q002).
 - [ ] Does a reranker remove the USM pages from hybrid's SLM results?
-- [ ] How do the three retrievers compare on paraphrased questions that don't reuse the document's wording?
+- [x] How do the three retrievers compare on paraphrased questions? After stemming: BM25 0.88, dense and hybrid 0.62 (see stemming entry).
+- [ ] Does weighting BM25 higher in the fusion close the paraphrased gap without losing conceptual questions?
+- [x] Does hybrid beat BM25 on vaguer, user-style questions? Yes: 0.70 vs 0.50 Hit@5 on 10 questions (prediction recorded before running).
+- [ ] Do a reranker or query rewriting fix the questions all methods miss (q044, q046, q048)?
 
 ---
 
@@ -208,6 +266,8 @@ Prompt design: numbered sources in the prompt; every factual sentence must cite 
 | Exact refusal sentence | Refusals can be checked with code, not a judge |
 | Generation errors are not swallowed | The answer is the product; the API layer will return a proper error |
 | Hybrid retrieval with reciprocal rank fusion | Dense confused domain terms (SLM vs USM) and missed rare terms ("warp"); RRF combines rankings without normalizing incompatible scores |
+| Snowball stemming in BM25 | Fixed "prefetching" vs "prefetch" (q024); BM25 Hit@5 0.82 → 0.88 |
+| Hybrid stays the default over stemmed BM25 | Tied on document-worded questions; on user-style questions hybrid 0.70 vs BM25 0.50 (prediction recorded first); best overall on all metrics |
 | One retriever interface (`query_retrieve`) | Dense, BM25 and hybrid are interchangeable, so the generator and evaluation don't change |
 | Retrievers passed in, not built inside (dependency injection) | One shared store and model; fusion testable with fake retrievers |
 | "Unanswerable" evaluation questions verified by searching the PDFs | Two assumed-unanswerable questions turned out to be answerable |

@@ -6,33 +6,39 @@
 
 Built by a GPU software engineer: the evaluation questions and gold labels come from domain knowledge, and the most instructive failure (dense retrieval confusing *shared local memory* with *Unified Shared Memory*) was caught because of it.
 
+**[Results](#results) · [Why hybrid retrieval](#why-hybrid-retrieval-a-real-failure) · [Architecture](#architecture) · [Quick start](#quick-start) · [Evaluation report](docs/evaluation.md)**
+
 ![API response with page citations](docs/images/api_response.png)
 
 ---
 
 ## Results
 
-Evaluated on **40 questions** (33 answerable with gold pages verified against the source PDFs, 7 unanswerable). Full methodology and failure analysis: [docs/evaluation.md](docs/evaluation.md).
+Evaluated on **50 questions** (43 answerable with gold pages verified against the source PDFs, 7 unanswerable). Full methodology and failure analysis: [docs/evaluation.md](docs/evaluation.md).
 
-**Retrieval** (33 answerable questions)
+**Retrieval** (43 answerable questions)
 
 | Retriever | Hit@5 | Recall@5 | MRR@10 |
 |---|---|---|---|
-| Dense (`bge-small-en-v1.5`) | 0.70 | 0.63 | 0.55 |
-| BM25 | 0.82 | 0.71 | **0.71** |
-| **Hybrid (reciprocal rank fusion)** | **0.88** | **0.78** | 0.69 |
+| Dense (`bge-small-en-v1.5`) | 0.65 | 0.54 | 0.49 |
+| BM25 (stemmed) | 0.79 | 0.65 | 0.58 |
+| **Hybrid (reciprocal rank fusion), default** | **0.81** | **0.67** | **0.67** |
 
-**Answers** (hybrid retriever, all 40 questions)
+On 10 questions worded the way developers actually ask (avoiding the documents' terms), Hit@5 was **hybrid 0.70**, BM25 0.50, dense 0.50.
+
+**Answers** (hybrid retriever, all 50 questions)
 
 | Metric | Result |
 |---|---|
-| Answered when answerable | 31 / 33 |
+| Answered when answerable | 40 / 43 |
 | Refused when unanswerable | **7 / 7** (no fabricated answers) |
-| Citation hit (cites a gold page) | 0.94 |
-| Faithfulness (claims supported by retrieved text) | 0.99 |
+| Citation hit (cites a gold page) | 0.88 |
+| Faithfulness (claims supported by retrieved text) | 0.98 |
 
 **Key findings**
-- **Hybrid retrieval raised Hit@5 from 0.70 to 0.88.** Dense retrieval was best on conceptual questions (7/7) but missed exact identifiers (`warp`, `sycl-ls`, `local_mem_size`); hybrid found a relevant page for all 10 exact-term questions.
+- **Keyword matching is essential for this corpus.** Dense retrieval alone was weakest: best on conceptual questions (7/7) but it missed exact identifiers (`warp`, `sycl-ls`, `local_mem_size`) and confused domain terms.
+- **Hybrid wins where it matters, and the test was set up before the result.** On questions that reuse the documents' wording, stemmed BM25 and hybrid tied (0.88 vs 0.85). To test whether hybrid handles real-world wording better, I added 10 user-style questions and recorded the prediction before running: hybrid found 7, BM25 5. Hybrid kept every question BM25 found and added the two only dense found, because the retrievers fail on different questions. Its cost: on some paraphrased questions, fusion demotes a page only BM25 found.
+- **Stemming fixed a diagnosed miss.** "prefetching" didn't match "prefetch"; after adding Snowball stemming, that page rose from rank 7 to rank 1 in hybrid.
 - **Every answer-level failure traces back to retrieval.** When the relevant page wasn't retrieved, the model refused or answered from the context it had, rather than inventing. The bottleneck is retrieval, which is where further work should go.
 - **Answers are grounded but can be incomplete:** supported-claim metrics don't measure completeness (see the evaluation write-up).
 
@@ -56,7 +62,7 @@ A general-purpose embedding model treats the two terms as similar; to a GPU engi
 ```mermaid
 flowchart LR
     subgraph Ingestion
-        A[Public Intel PDFs] --> B[PyPDF loader<br/>one document per page]
+        A[Public Intel PDFs] --> B[PyMuPDF loader<br/>one document per page]
         B --> C[Chunking<br/>1000 chars, 200 overlap<br/>+ noise filter]
         C --> D[Embeddings<br/>bge-small-en-v1.5]
         D --> E[(Chroma<br/>cosine, persistent)]
@@ -81,6 +87,7 @@ flowchart LR
 | Noise filter (title and table-of-contents chunks) | They matched query words but carried no content, crowding real answers out of the top results |
 | `bge-small-en-v1.5` instead of `all-MiniLM-L6-v2` | MiniLM's 256-token limit truncated 42% of chunks before embedding; bge-small's 512-token limit fits them |
 | Hybrid retrieval with reciprocal rank fusion | Combines rankings without normalizing incompatible scores (cosine distance vs BM25) |
+| Snowball stemming in BM25 | Word forms match ("prefetching" → "prefetch"); identifiers like `local_mem_size` stay single tokens |
 | The model cites `[n]`; code maps `[n]` to source and page | The model never writes page numbers, so it can't invent them |
 | Exact refusal sentence | Refusals are checked by code, not by a judge |
 | One retriever interface (`query_retrieve`) | Dense, BM25 and hybrid are interchangeable in the generator, CLI, API and evaluation |
@@ -170,7 +177,7 @@ gpu-dev-assist/
 │   ├── evaluate_retrieval.py        # retrieval metrics
 │   ├── evaluate_generation.py       # answer-level metrics and LLM judge
 │   └── cli.py                       # gpu-dev-assist command
-├── data/eval/questions.jsonl        # evaluation set (40 questions)
+├── data/eval/questions.jsonl        # evaluation set (50 questions)
 ├── data/sources.md                  # document sources and versions
 ├── docs/                            # evaluation write-up, experiment log, images
 ├── tests/                           # unit and contract tests
@@ -183,15 +190,15 @@ Built only on **publicly available** Intel documentation (see [data/sources.md](
 
 ## Limitations
 
-- **Small evaluation set** (40 questions): differences of one or two questions per category are not meaningful.
+- **Small evaluation set** (50 questions): differences of one or two questions per category are not meaningful.
 - **Gold labels** were found by keyword search and manual review; a relevant page with entirely different wording could be unlabeled.
 - **Completeness isn't measured:** answers can be grounded and correctly cited but narrow.
 - **The faithfulness judge** is from the same model family as the generator, and generation metrics come from a single run.
 
 ## Next steps
 
-- **Retrieval:** stemming in BM25 (fixes a "prefetching" vs "prefetch" miss), a cross-encoder reranker, structure-aware chunking (section headings, whole code blocks).
-- **Evaluation:** answer correctness against reference answers; latency and cost per query in the evaluation report.
+- **Retrieval:** weighted fusion (favour BM25), a cross-encoder reranker, structure-aware chunking (section headings, whole code blocks).
+- **Evaluation:** more user-style questions (ideally from real users), answer correctness against reference answers; latency and cost per query in the evaluation report.
 - **Engineering:** CPU-only PyTorch for a smaller image, a document download command, API tests, a 503 response when the LLM API is unavailable.
 - **Deployment:** hosted API with rate limiting.
 - **Coverage:** the Khronos SYCL 2020 specification.

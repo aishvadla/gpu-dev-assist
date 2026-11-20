@@ -2,13 +2,21 @@
 
 import re
 
+import snowballstemmer
 from rank_bm25 import BM25Okapi
 
 from gpu_dev_assist.vector_store import VectorStore
 
+_stemmer = snowballstemmer.stemmer("english")
+
 
 def tokenize(text: str) -> list[str]:
-    return re.findall(r"[a-z0-9_]+", text.lower())
+    """Lowercase word tokens, stemmed so word forms match ("prefetching" -> "prefetch").
+
+    Identifiers such as local_mem_size stay a single token, because underscores
+    are part of the token pattern.
+    """
+    return _stemmer.stemWords(re.findall(r"[a-z0-9_]+", text.lower()))
 
 
 class BM25Retriever:
