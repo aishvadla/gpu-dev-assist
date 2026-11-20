@@ -1,2 +1,1 @@
-def main() -> None:
-    print("Hello from gpu-dev-assist!")
+"""GPU DevAssist: RAG assistant for GPU programming documentation."""
