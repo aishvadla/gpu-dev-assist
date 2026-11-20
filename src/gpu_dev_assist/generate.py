@@ -61,7 +61,10 @@ class AnswerGenerator:
             if 1 <= i <= len(results)
         ]
 
-        return {"question": question, "answer": text, "sources": sources, "retrieved": results}
+        return {"question": question, "answer": text, "sources": sources, "retrieved": results, "usage": {
+                "input_tokens": response.usage.input_tokens,
+                "output_tokens": response.usage.output_tokens,
+            }}
 
 
 if __name__ == "__main__":
