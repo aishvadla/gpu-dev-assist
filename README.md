@@ -146,7 +146,7 @@ Build the index locally first (step 4), then:
 docker build -t gpu-dev-assist .
 docker run -p 8000:8000 --env-file .env gpu-dev-assist
 ```
-The embedding model is downloaded at build time, so the container runs offline apart from the LLM API. The image is built locally and not published, because the index contains the documents' text.
+The image uses CPU-only PyTorch (the embedding model runs on CPU), which cut it from 10 GB to 2.8 GB on disk (652 MB compressed). The embedding model is downloaded at build time, so the container runs offline apart from the LLM API. The image is built locally and not published, because the index contains the documents' text.
 
 ## Evaluation
 
@@ -199,6 +199,6 @@ Built only on **publicly available** Intel documentation (see [data/sources.md](
 
 - **Retrieval:** weighted fusion (favour BM25), a cross-encoder reranker, structure-aware chunking (section headings, whole code blocks).
 - **Evaluation:** more user-style questions (ideally from real users), answer correctness against reference answers; latency and cost per query in the evaluation report.
-- **Engineering:** CPU-only PyTorch for a smaller image, a document download command, API tests, a 503 response when the LLM API is unavailable.
+- **Engineering:** a document download command, API tests, a 503 response when the LLM API is unavailable.
 - **Deployment:** hosted API with rate limiting.
 - **Coverage:** the Khronos SYCL 2020 specification.

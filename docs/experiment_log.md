@@ -267,6 +267,7 @@ q041 - / 3 / 5 · q042 5 / 2 / 1 · q043 1 / 2 / 1 · q044 - / - / - · q045 2 /
 | Generation errors are not swallowed | The answer is the product; the API layer will return a proper error |
 | Hybrid retrieval with reciprocal rank fusion | Dense confused domain terms (SLM vs USM) and missed rare terms ("warp"); RRF combines rankings without normalizing incompatible scores |
 | Snowball stemming in BM25 | Fixed "prefetching" vs "prefetch" (q024); BM25 Hit@5 0.82 → 0.88 |
+| CPU-only PyTorch (`[tool.uv.sources]` → PyTorch CPU index) | Embeddings run on CPU; the CUDA build's GPU libraries were unused. Docker image 10 GB → 2.78 GB (652 MB compressed) |
 | Hybrid stays the default over stemmed BM25 | Tied on document-worded questions; on user-style questions hybrid 0.70 vs BM25 0.50 (prediction recorded first); best overall on all metrics |
 | One retriever interface (`query_retrieve`) | Dense, BM25 and hybrid are interchangeable, so the generator and evaluation don't change |
 | Retrievers passed in, not built inside (dependency injection) | One shared store and model; fusion testable with fake retrievers |
