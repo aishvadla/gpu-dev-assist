@@ -1,39 +1,197 @@
-# gpu-dev-assist
-Domain-specific RAG assistant for GPU programming documentation, with retrieval evaluation
+# GPU DevAssist
 
+[![CI](https://github.com/aishvadla/gpu-dev-assist/actions/workflows/ci.yaml/badge.svg)](https://github.com/aishvadla/gpu-dev-assist/actions/workflows/ci.yaml)
 
-## Phase 1 — Core RAG pipeline
-- [x] Document ingestion: Intel oneAPI GPU Optimization Guide (2025.0) and Programming Guide (2025.1); source file and page kept on every chunk
-- [x] Chunking: recursive character splitting within pages (1000 / 200)
-- [x] Noise filtering: drop title pages and table-of-contents chunks (measured improvement; see docs/experiment_log.md)
-- [x] Chunk size check: verify chunks fit the embedding model's 256-token input limit
-- [x] Embeddings — Generate dense embeddings via sentence-transformers
-- [x] Vector database — Store embeddings and metadata in Chroma; persist the index so you don't rebuild on every query.
-- [x] Semantic retrieval — Retrieve top-k relevant chunks from user queries with source, page and distance
-- [x] LLM answer generation — Pass retrieved context into an LLM using a prompt that forbids unsupported claims.
-- [x] Source citations — Show source document and page/section in generated answers, tied to retrieved evidence.
-- [x] Insufficient-evidence handling — Return an explicit 'I don't have enough information' response when sources cannot support the answer.
-- [x] Unit tests: chunking, ingestion (no duplicates, metadata kept) and generation (citation mapping, refusals), with the LLM mocked
-- [x] CI: GitHub Actions runs the tests on every push
+**A retrieval-augmented generation (RAG) assistant that answers GPU programming questions from Intel's public oneAPI documentation, with page-level citations and a measured, expert-verified evaluation.**
 
-## Phase 2 — Evaluation and engineering
-- [ ] Evaluation dataset — Create about 25–30 domain questions, including answerable and unanswerable examples, with source-grounded reference evidence.
-- [ ] Retrieval metrics — Measure Recall@k or Hit@k and MRR with labeled relevant source chunks.
-- [ ] Answer quality — Evaluate answer correctness, citation support/faithfulness, and abstention on unanswerable questions.
-- [ ] Failure analysis — Inspect examples where retrieval misses exact symbols, code syntax, or critical context.
-- [ ] Baseline comparison — Compare a basic dense retriever with one meaningful improvement, such as BM25 + dense hybrid retrieval.
-- [ ] API and tests — Add FastAPI querying, basic input handling, and pytest coverage of ingestion/retrieval and API behaviors.
-- [ ] Reproducibility — Pin dependencies, document setup, use environment variables for configuration, and make indexing repeatable.
-- [ ] Docker: containerized API
-- [ ] Deployment — Deploy the API and optionally add a simple UI, authentication, or resource limits.
-- [ ] GitHub README — Include architecture, data sources, sample questions and outputs, metrics, limitations, and setup instructions.
-- [ ] Demo — Provide a brief screen recording or GIF showing a question, cited answer, and unanswerable query.
+Built by a GPU software engineer: the evaluation questions and gold labels come from domain knowledge, and the most instructive failure (dense retrieval confusing *shared local memory* with *Unified Shared Memory*) was caught because of it.
 
-## Phase 3
-- [ ] Reranking — Add a cross-encoder or other reranker and measure improvement against the baseline.
-- [ ] Structure-aware chunking: preserve technical identifiers and avoid arbitrarily breaking code blocks.
-- [ ] More documentation — Expand to other public SYCL, compiler, or tuning documents; reindex and evaluate.
-- [ ] Agentic tools — Add tool selection for documentation retrieval, public code search, or structured troubleshooting.
-- [ ] Observability — Capture query latency, retrieval diagnostics, LLM token usage and failure categories.
+![API response with page citations](docs/images/api_response.png)
 
+---
 
+## Results
+
+Evaluated on **40 questions** (33 answerable with gold pages verified against the source PDFs, 7 unanswerable). Full methodology and failure analysis: [docs/evaluation.md](docs/evaluation.md).
+
+**Retrieval** (33 answerable questions)
+
+| Retriever | Hit@5 | Recall@5 | MRR@10 |
+|---|---|---|---|
+| Dense (`bge-small-en-v1.5`) | 0.70 | 0.63 | 0.55 |
+| BM25 | 0.82 | 0.71 | **0.71** |
+| **Hybrid (reciprocal rank fusion)** | **0.88** | **0.78** | 0.69 |
+
+**Answers** (hybrid retriever, all 40 questions)
+
+| Metric | Result |
+|---|---|
+| Answered when answerable | 31 / 33 |
+| Refused when unanswerable | **7 / 7** (no fabricated answers) |
+| Citation hit (cites a gold page) | 0.94 |
+| Faithfulness (claims supported by retrieved text) | 0.99 |
+
+**Key findings**
+- **Hybrid retrieval raised Hit@5 from 0.70 to 0.88.** Dense retrieval was best on conceptual questions (7/7) but missed exact identifiers (`warp`, `sycl-ls`, `local_mem_size`); hybrid found a relevant page for all 10 exact-term questions.
+- **Every answer-level failure traces back to retrieval.** When the relevant page wasn't retrieved, the model refused or answered from the context it had, rather than inventing. The bottleneck is retrieval, which is where further work should go.
+- **Answers are grounded but can be incomplete:** supported-claim metrics don't measure completeness (see the evaluation write-up).
+
+---
+
+## Why hybrid retrieval: a real failure
+
+Asked *"When should I use shared local memory in a SYCL kernel?"*, the dense retriever returned pages about **Unified Shared Memory** (`malloc_shared`), an unrelated concept that shares the word "shared". The model correctly refused, because nothing it was given answered the question.
+
+| | Dense | BM25 | Hybrid |
+|---|---|---|---|
+| Shared local memory pages in top 10 | 0 | 6 | ✓ |
+| Answer | Refused | Answered | Answered, cited |
+
+A general-purpose embedding model treats the two terms as similar; to a GPU engineer they aren't. BM25 matches the exact term, and reciprocal rank fusion combines both rankings so that results ranked well by both rise to the top.
+
+---
+
+## Architecture
+
+```mermaid
+flowchart LR
+    subgraph Ingestion
+        A[Public Intel PDFs] --> B[PyPDF loader<br/>one document per page]
+        B --> C[Chunking<br/>1000 chars, 200 overlap<br/>+ noise filter]
+        C --> D[Embeddings<br/>bge-small-en-v1.5]
+        D --> E[(Chroma<br/>cosine, persistent)]
+    end
+    subgraph Query
+        Q[Question] --> R1[Dense retrieval]
+        Q --> R2[BM25]
+        R1 --> F[Reciprocal rank fusion]
+        R2 --> F
+        F --> G[Claude Haiku<br/>numbered sources,<br/>cite or refuse]
+        G --> H[Answer + page citations]
+    end
+    E --> R1
+    E --> R2
+```
+
+**Design decisions**
+
+| Decision | Reason |
+|---|---|
+| Chunk within pages | Every chunk keeps its page number, so citations point to a real page |
+| Noise filter (title and table-of-contents chunks) | They matched query words but carried no content, crowding real answers out of the top results |
+| `bge-small-en-v1.5` instead of `all-MiniLM-L6-v2` | MiniLM's 256-token limit truncated 42% of chunks before embedding; bge-small's 512-token limit fits them |
+| Hybrid retrieval with reciprocal rank fusion | Combines rankings without normalizing incompatible scores (cosine distance vs BM25) |
+| The model cites `[n]`; code maps `[n]` to source and page | The model never writes page numbers, so it can't invent them |
+| Exact refusal sentence | Refusals are checked by code, not by a judge |
+| One retriever interface (`query_retrieve`) | Dense, BM25 and hybrid are interchangeable in the generator, CLI, API and evaluation |
+
+Every decision was made from a measurement; the full record is in [docs/experiment_log.md](docs/experiment_log.md).
+
+---
+
+## Quick start
+
+Requires Python 3.13, [uv](https://docs.astral.sh/uv/) and an [Anthropic API key](https://console.anthropic.com/).
+
+**1. Install**
+```bash
+git clone https://github.com/aishvadla/gpu-dev-assist.git
+cd gpu-dev-assist
+uv sync
+```
+
+**2. Configure**: create `.env` in the repo root:
+```
+ANTHROPIC_API_KEY=your-key
+```
+
+**3. Download the documents**: the PDFs are not redistributed. Download the two guides listed in [data/sources.md](data/sources.md) into `data/raw/`.
+
+**4. Build the index**
+```bash
+uv run gpu-dev-assist ingest
+```
+
+**5. Ask**
+```bash
+uv run gpu-dev-assist ask "Why is my program slower when I create a new SYCL queue inside a loop?"
+uv run gpu-dev-assist ask "What is NVIDIA's CUDA warp size?" --retriever dense   # compare retrievers
+```
+
+## API
+
+```bash
+uv run uvicorn app.app:app --reload
+```
+Interactive docs at http://127.0.0.1:8000/docs.
+
+| Endpoint | Description |
+|---|---|
+| `POST /ask` | `{"question": "...", "retriever": "hybrid"}` → answer, cited sources (document and page), latency and token usage |
+| `GET /health` | Health check |
+
+Requests are validated (question length, retriever name); invalid input returns 422.
+
+## Docker
+
+Build the index locally first (step 4), then:
+```bash
+docker build -t gpu-dev-assist .
+docker run -p 8000:8000 --env-file .env gpu-dev-assist
+```
+The embedding model is downloaded at build time, so the container runs offline apart from the LLM API. The image is built locally and not published, because the index contains the documents' text.
+
+## Evaluation
+
+```bash
+uv run gpu-dev-assist eval retrieval    # Hit@5, Recall@5, MRR@10 for all three retrievers (local, free)
+uv run gpu-dev-assist eval generation   # refusals, citation hit, faithfulness (calls the API)
+uv run pytest -v                        # unit tests (LLM mocked; no API key needed)
+```
+
+The evaluation set is [data/eval/questions.jsonl](data/eval/questions.jsonl): conceptual, exact-term, reasoning, paraphrased and unanswerable questions, each answerable one with gold pages and a quoted excerpt checked against the PDF.
+
+---
+
+## Project structure
+
+```
+gpu-dev-assist/
+├── app/app.py                       # FastAPI service
+├── src/gpu_dev_assist/
+│   ├── data_loader.py               # PDF loading
+│   ├── chunking_embedding.py        # chunking, noise filter, embeddings
+│   ├── vector_store.py              # Chroma store (clean rebuilds)
+│   ├── data_ingestion.py            # ingestion pipeline
+│   ├── dense_retrieve.py            # dense retrieval
+│   ├── keyword_retrieve.py          # BM25 retrieval
+│   ├── hybrid_retrieve.py           # reciprocal rank fusion + build_retrievers()
+│   ├── generate.py                  # cited answers and refusals
+│   ├── evaluate_retrieval.py        # retrieval metrics
+│   ├── evaluate_generation.py       # answer-level metrics and LLM judge
+│   └── cli.py                       # gpu-dev-assist command
+├── data/eval/questions.jsonl        # evaluation set (40 questions)
+├── data/sources.md                  # document sources and versions
+├── docs/                            # evaluation write-up, experiment log, images
+├── tests/                           # unit and contract tests
+└── Dockerfile
+```
+
+## Data and licensing
+
+Built only on **publicly available** Intel documentation (see [data/sources.md](data/sources.md)): the Intel oneAPI GPU Optimization Guide 2025.0 and the Intel oneAPI Programming Guide 2025.1. The documents are not redistributed in this repository or in any published image; answers quote short passages with page references. Code is MIT-licensed.
+
+## Limitations
+
+- **Small evaluation set** (40 questions): differences of one or two questions per category are not meaningful.
+- **Gold labels** were found by keyword search and manual review; a relevant page with entirely different wording could be unlabeled.
+- **Completeness isn't measured:** answers can be grounded and correctly cited but narrow.
+- **The faithfulness judge** is from the same model family as the generator, and generation metrics come from a single run.
+
+## Next steps
+
+- **Retrieval:** stemming in BM25 (fixes a "prefetching" vs "prefetch" miss), a cross-encoder reranker, structure-aware chunking (section headings, whole code blocks).
+- **Evaluation:** answer correctness against reference answers; latency and cost per query in the evaluation report.
+- **Engineering:** CPU-only PyTorch for a smaller image, a document download command, API tests, a 503 response when the LLM API is unavailable.
+- **Deployment:** hosted API with rate limiting.
+- **Coverage:** the Khronos SYCL 2020 specification.

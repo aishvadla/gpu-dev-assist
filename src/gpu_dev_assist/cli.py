@@ -4,7 +4,7 @@ import argparse
 
 
 def main():
-    parser = argparse.ArgumentParser(prog="gpu-devassist", description="RAG assistant for GPU documentation")
+    parser = argparse.ArgumentParser(prog="gpu-dev-assist", description="RAG assistant for GPU documentation")
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("ingest", help="Load the PDFs, chunk, embed and rebuild the vector store")
