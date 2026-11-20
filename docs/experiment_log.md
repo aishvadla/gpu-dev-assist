@@ -160,6 +160,30 @@ Prompt design: numbered sources in the prompt; every factual sentence must cite 
 
 ---
 
+## 2026-11-19: Generation evaluation (hybrid retriever, 40 questions)
+
+**Setup.** Hybrid retriever, top 6 chunks, Claude Haiku with the citation prompt. Refusals checked with code (exact refusal sentence). Citation hit: at least one cited page is a gold page. Faithfulness: an LLM judge splits the answer into claims and checks each against the retrieved chunks.
+
+| Metric | Result |
+|---|---|
+| Answered when answerable | 31 / 33 |
+| Refused when unanswerable | **7 / 7** (no fabricated answers, including the 3 in-domain near-misses) |
+| Citation hit (answered questions) | 0.94 (29 / 31) |
+| Mean faithfulness | 0.99 |
+
+**Every generation failure traces back to retrieval.**
+- **False refusals, q021 and q034:** the same questions hybrid retrieval missed. With no relevant chunk in context, the model refused instead of guessing: the intended behavior.
+- **Citation misses, q024 and q036:** also hybrid retrieval misses (q024's gold page was at rank 7). The model answered from neighboring pages it was given, and the judge found those answers supported by them.
+- **Faithfulness below 1.0, q013 (0.88) and q020 (0.92):** one claim each was not found in the retrieved text (e.g. "create the queue once outside the loop", which is stated on p. 109, a page that wasn't retrieved). Minor: correct advice, but drawn from beyond the given context.
+
+**Not captured by the metrics: completeness.** q002 (shared local memory) was answered, cited correctly and fully faithful, but narrow: it covered histograms and reductions and said the sources give no general rule. The chunk with the general explanation (p. 65) wasn't in the top 6. Citation hit and faithfulness check that the answer is supported, not that it is complete.
+
+**Takeaway.** The generation layer is reliable: it refuses when evidence is missing and stays grounded. The bottleneck is retrieval, so further work should go there (BM25 stemming, reranking).
+
+**Limitations.** The judge is from the same model family as the generator (possible bias). Answers vary between runs, so generation metrics are from a single run. Citation hit counts a correct citation to an unlabeled page as a miss.
+
+---
+
 ## Open questions
 
 - [x] Shared local memory: retrieval miss, not the prompt. Dense retrieval returned Unified Shared Memory pages (see 2026-11-18).
