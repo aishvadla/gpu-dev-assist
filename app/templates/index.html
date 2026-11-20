@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f7f8fa">
+    <meta name="description" content="Ask GPU programming questions and get grounded answers from oneAPI documentation.">
+    <title>GPU DevAssist</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="/static/app.js?v=2" defer></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="App navigation">
+        <a class="brand" href="/" aria-label="GPU DevAssist home">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9Z" />
+              <path d="m8 9.5 4-2.25 4 2.25v5l-4 2.25L8 14.5v-5Z" />
+            </svg>
+          </span>
+          <span class="brand-name">GPU <strong>DevAssist</strong></span>
+        </a>
+
+        <button class="new-chat-button" id="new-chat" type="button">
+          <span aria-hidden="true">+</span>
+          New question
+        </button>
+
+        <div class="sidebar-note">
+          <span class="note-icon" aria-hidden="true">✳</span>
+          <p>Answers grounded in<br><strong>Intel oneAPI documentation</strong></p>
+        </div>
+
+        <a class="sidebar-link" href="/docs" target="_blank" rel="noreferrer">
+          <span aria-hidden="true">↗</span> API documentation
+        </a>
+        <div class="sidebar-footer">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span>GPU knowledge, within reach</span>
+        </div>
+      </aside>
+
+      <main class="main-panel">
+        <header class="topbar">
+          <div class="mobile-brand">
+            <span class="brand-mark small" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9Z" />
+                <path d="m8 9.5 4-2.25 4 2.25v5l-4 2.25L8 14.5v-5Z" />
+              </svg>
+            </span>
+            <span>GPU <strong>DevAssist</strong></span>
+          </div>
+          <div class="topbar-label"><span class="status-dot"></span> Documentation assistant</div>
+          <a class="topbar-docs" href="/docs" target="_blank" rel="noreferrer">API docs <span aria-hidden="true">↗</span></a>
+        </header>
+
+        <section class="conversation" aria-live="polite" aria-label="Conversation">
+          <div class="welcome" id="welcome">
+            <div class="welcome-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9Z" />
+                <path d="m8 9.5 4-2.25 4 2.25v5l-4 2.25L8 14.5v-5Z" />
+                <path d="m10.5 12 1 1 2-2" />
+              </svg>
+            </div>
+            <p class="eyebrow">GPU programming, made clearer</p>
+            <h1>What are you building?</h1>
+            <p class="welcome-copy">Ask a question about GPU programming or oneAPI. Get a concise answer backed by documentation and page citations.</p>
+
+            <div class="suggestions" aria-label="Try asking">
+              <button class="suggestion" type="button" data-question="When should I use shared local memory in a SYCL kernel?">
+                <span>SYCL &amp; memory</span>
+                <span class="suggestion-text">When should I use shared local memory?</span>
+                <span class="suggestion-arrow" aria-hidden="true">↗</span>
+              </button>
+              <button class="suggestion" type="button" data-question="How can I improve GPU kernel performance with oneAPI?">
+                <span>Performance</span>
+                <span class="suggestion-text">How can I improve kernel performance?</span>
+                <span class="suggestion-arrow" aria-hidden="true">↗</span>
+              </button>
+              <button class="suggestion" type="button" data-question="What is the oneAPI programming model?">
+                <span>Fundamentals</span>
+                <span class="suggestion-text">What is the oneAPI programming model?</span>
+                <span class="suggestion-arrow" aria-hidden="true">↗</span>
+              </button>
+            </div>
+          </div>
+          <div class="messages" id="messages"></div>
+        </section>
+
+        <div class="composer-wrap">
+          <form class="composer" id="question-form">
+            <label class="sr-only" for="question">Your GPU programming question</label>
+            <textarea id="question" name="question" rows="1" minlength="3" maxlength="500" placeholder="Ask a GPU programming question..." required></textarea>
+            <div class="composer-controls">
+              <div class="composer-meta">
+                <label class="sr-only" for="retriever">Retrieval method</label>
+                <select id="retriever" name="retriever">
+                  <option value="hybrid" selected>Hybrid search</option>
+                  <option value="dense">Dense search</option>
+                  <option value="bm25">Keyword search</option>
+                </select>
+                <span class="meta-divider" aria-hidden="true"></span>
+                <span class="char-count" id="char-count">0 / 500</span>
+              </div>
+              <button class="send-button" id="send-button" type="submit" aria-label="Send question">
+                <span>Ask</span>
+                <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h12m-5-5 5 5-5 5" /></svg>
+              </button>
+            </div>
+          </form>
+          <p class="disclaimer">Answers are based on the indexed documentation and may not cover every case.</p>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>

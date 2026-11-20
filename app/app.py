@@ -2,9 +2,12 @@
 
 import time
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Literal
 
 from fastapi import FastAPI, Request
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from gpu_dev_assist.generate import AnswerGenerator
@@ -40,11 +43,12 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="GPU DevAssist", lifespan=lifespan)
+app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
 @app.get("/")
 def root():
-    """Point visitors to the interactive API docs."""
-    return {"message": "GPU DevAssist API", "docs": "/docs"}
+    """Serve the web interface."""
+    return FileResponse(Path(__file__).parent / "templates" / "index.html")
 
 
 @app.get("/health")

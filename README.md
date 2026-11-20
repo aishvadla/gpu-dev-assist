@@ -4,11 +4,11 @@
 
 **A retrieval-augmented generation (RAG) assistant that answers GPU programming questions from Intel's public oneAPI documentation, with page-level citations and a measured, expert-verified evaluation.**
 
-Built by a GPU software engineer: the evaluation questions and gold labels come from domain knowledge, and the most instructive failure (dense retrieval confusing *shared local memory* with *Unified Shared Memory*) was caught because of it.
+Built by an engineer who works on GPU software: the evaluation questions and gold labels come from domain knowledge, and the most instructive failure (dense retrieval confusing *shared local memory* with *Unified Shared Memory*) was caught because of it.
 
 **[Results](#results) · [Why hybrid retrieval](#why-hybrid-retrieval-a-real-failure) · [Architecture](#architecture) · [Quick start](#quick-start) · [Evaluation report](docs/evaluation.md)**
 
-![API response with page citations](docs/images/api_response.png)
+![GPU DevAssist web interface: a cited answer, then a refusal for an out-of-scope question](docs/images/app_demo.png)
 
 ---
 
@@ -34,10 +34,6 @@ On 10 questions worded the way developers actually ask (avoiding the documents' 
 | Refused when unanswerable | **7 / 7** (no fabricated answers) |
 | Citation hit (cites a gold page) | 0.88 |
 | Faithfulness (claims supported by retrieved text) | 0.98 |
-
-Asked something the documents don't cover, it refuses instead of answering from general knowledge:
-
-![API refusal for an out-of-scope question](docs/images/api_refusal.png)
 
 **Key findings**
 - **Keyword matching is essential for this corpus.** Dense retrieval alone was weakest: best on conceptual questions (7/7) but it missed exact identifiers (`warp`, `sycl-ls`, `local_mem_size`) and confused domain terms.
@@ -134,7 +130,7 @@ uv run gpu-dev-assist ask "What is NVIDIA's CUDA warp size?" --retriever dense  
 ```bash
 uv run uvicorn app.app:app --reload
 ```
-Interactive docs at http://127.0.0.1:8000/docs.
+Open http://127.0.0.1:8000 for the web interface, or visit http://127.0.0.1:8000/docs for interactive API docs.
 
 | Endpoint | Description |
 |---|---|
@@ -190,7 +186,7 @@ gpu-dev-assist/
 
 ## Data and licensing
 
-Built only on **publicly available** Intel documentation (see [data/sources.md](data/sources.md)): the Intel oneAPI GPU Optimization Guide 2025.0 and the Intel oneAPI Programming Guide 2025.1. The documents are not redistributed in this repository or in any published image; answers quote short passages with page references. Code is MIT-licensed.
+Built only on **publicly available** Intel documentation (see [data/sources.md](data/sources.md)): the Intel oneAPI GPU Optimization Guide 2025.0 and the Intel oneAPI Programming Guide 2025.1. The documents are not redistributed in this repository or in any published image; answers quote short passages with page references. Code is MIT-licensed. This is a personal project, not affiliated with or endorsed by Intel.
 
 ## Limitations
 
