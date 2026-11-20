@@ -35,6 +35,10 @@ On 10 questions worded the way developers actually ask (avoiding the documents' 
 | Citation hit (cites a gold page) | 0.88 |
 | Faithfulness (claims supported by retrieved text) | 0.98 |
 
+Asked something the documents don't cover, it refuses instead of answering from general knowledge:
+
+![API refusal for an out-of-scope question](docs/images/api_refusal.png)
+
 **Key findings**
 - **Keyword matching is essential for this corpus.** Dense retrieval alone was weakest: best on conceptual questions (7/7) but it missed exact identifiers (`warp`, `sycl-ls`, `local_mem_size`) and confused domain terms.
 - **Hybrid wins where it matters, and the test was set up before the result.** On questions that reuse the documents' wording, stemmed BM25 and hybrid tied (0.88 vs 0.85). To test whether hybrid handles real-world wording better, I added 10 user-style questions and recorded the prediction before running: hybrid found 7, BM25 5. Hybrid kept every question BM25 found and added the two only dense found, because the retrievers fail on different questions. Its cost: on some paraphrased questions, fusion demotes a page only BM25 found.
