@@ -1,6 +1,6 @@
 """Tests for BM25 tokenization."""
 
-from gpu_dev_assist.keyword_retrieve import tokenize
+from gpu_dev_assist.retrieval.keyword import tokenize
 
 
 def test_stemming_matches_word_forms():

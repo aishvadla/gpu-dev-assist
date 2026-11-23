@@ -1,8 +1,8 @@
 from gpu_dev_assist.utils.logger import logger
-from gpu_dev_assist.data_loader import load_all_documents
-from gpu_dev_assist.chunking_embedding import ChunkingEmbeddingPipeline
-from gpu_dev_assist.vector_store import VectorStore, DEFAULT_STORE
-from gpu_dev_assist.dense_retrieve import DenseRetriever
+from gpu_dev_assist.ingestion.data_loader import load_all_documents
+from gpu_dev_assist.ingestion.chunking_embedding import ChunkingEmbeddingPipeline
+from gpu_dev_assist.ingestion.vector_store import VectorStore, DEFAULT_STORE
+from gpu_dev_assist.retrieval.dense import DenseRetriever
 from typing import Dict, Any, List
 
 class DataIngestion:

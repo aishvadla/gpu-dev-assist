@@ -5,9 +5,9 @@ import re
 
 import pandas as pd
 
-from gpu_dev_assist.evaluate_retrieval import RESULTS_DIR, gold_pages, load_questions
+from gpu_dev_assist.evaluation.retrieval import RESULTS_DIR, gold_pages, load_questions
 from gpu_dev_assist.generate import INSUFFICIENT_EVIDENCE, AnswerGenerator
-from gpu_dev_assist.hybrid_retrieve import build_retrievers
+from gpu_dev_assist.retrieval.hybrid import build_retrievers
 
 JUDGE_PROMPT = """You check whether an answer is supported by its sources.
 

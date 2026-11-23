@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from gpu_dev_assist.hybrid_retrieve import build_retrievers
-from gpu_dev_assist.vector_store import PROJECT_ROOT
+from gpu_dev_assist.retrieval.hybrid import build_retrievers
+from gpu_dev_assist.ingestion.vector_store import PROJECT_ROOT
 
 QUESTIONS_PATH = PROJECT_ROOT / "data" / "eval" / "questions.jsonl"
 RESULTS_DIR = PROJECT_ROOT / "data" / "eval" / "results"

@@ -6,7 +6,7 @@ from gpu_dev_assist.utils.logger import logger
 from pathlib import Path
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]   # src/gpu_dev_assist/vector_store.py → repo root
+PROJECT_ROOT = Path(__file__).resolve().parents[3]   # src/gpu_dev_assist/ingestion/vector_store.py → repo root
 DEFAULT_STORE = str(PROJECT_ROOT / "data" / "vector_store")
 
 class VectorStore:

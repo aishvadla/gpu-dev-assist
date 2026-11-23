@@ -1,9 +1,9 @@
 """Hybrid retrieval: combine dense and BM25 rankings with reciprocal rank fusion."""
 
-from gpu_dev_assist.chunking_embedding import ChunkingEmbeddingPipeline
-from gpu_dev_assist.vector_store import VectorStore
-from gpu_dev_assist.dense_retrieve import DenseRetriever
-from gpu_dev_assist.keyword_retrieve import BM25Retriever
+from gpu_dev_assist.ingestion.chunking_embedding import ChunkingEmbeddingPipeline
+from gpu_dev_assist.ingestion.vector_store import VectorStore
+from gpu_dev_assist.retrieval.dense import DenseRetriever
+from gpu_dev_assist.retrieval.keyword import BM25Retriever
 
 
 class HybridRetriever:

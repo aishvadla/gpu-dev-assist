@@ -1,4 +1,4 @@
-from gpu_dev_assist.hybrid_retrieve import HybridRetriever
+from gpu_dev_assist.retrieval.hybrid import HybridRetriever
 
 
 class FakeRetriever:

@@ -5,7 +5,7 @@ import re
 import snowballstemmer
 from rank_bm25 import BM25Okapi
 
-from gpu_dev_assist.vector_store import VectorStore
+from gpu_dev_assist.ingestion.vector_store import VectorStore
 
 _stemmer = snowballstemmer.stemmer("english")
 

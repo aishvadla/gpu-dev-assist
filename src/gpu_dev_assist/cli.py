@@ -23,12 +23,12 @@ def main():
 
     # Imports inside each branch so `--help` stays fast (no model loading)
     if args.command == "ingest":
-        from gpu_dev_assist.data_ingestion import DataIngestion
+        from gpu_dev_assist.ingestion.data_ingestion import DataIngestion
         DataIngestion().initiate_data_ingestion()
 
     elif args.command == "ask":
         from gpu_dev_assist.generate import AnswerGenerator
-        from gpu_dev_assist.hybrid_retrieve import build_retrievers
+        from gpu_dev_assist.retrieval.hybrid import build_retrievers
         result = AnswerGenerator(build_retrievers()[args.retriever]).answer(args.question)
         print(result["answer"])
         for s in result["sources"]:
@@ -36,7 +36,7 @@ def main():
 
     elif args.command == "eval":
         import runpy
-        runpy.run_module(f"gpu_dev_assist.evaluate_{args.stage}", run_name="__main__")
+        runpy.run_module(f"gpu_dev_assist.evaluation.{args.stage}", run_name="__main__")
 
 
 if __name__ == "__main__":

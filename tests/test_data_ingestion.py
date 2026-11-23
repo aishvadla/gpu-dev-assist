@@ -2,9 +2,9 @@
 
 from langchain_core.documents import Document
 
-import gpu_dev_assist.data_ingestion as ingestion_module
-from gpu_dev_assist.data_ingestion import DataIngestion
-from gpu_dev_assist.dense_retrieve import DenseRetriever
+import gpu_dev_assist.ingestion.data_ingestion as ingestion_module
+from gpu_dev_assist.ingestion.data_ingestion import DataIngestion
+from gpu_dev_assist.retrieval.dense import DenseRetriever
 
 TEXT = (
     "The oneAPI programming model supports single-source compilation, so device code "

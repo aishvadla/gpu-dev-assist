@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from gpu_dev_assist.generate import AnswerGenerator
-from gpu_dev_assist.hybrid_retrieve import build_retrievers
+from gpu_dev_assist.retrieval.hybrid import build_retrievers
 
 
 class AskRequest(BaseModel):

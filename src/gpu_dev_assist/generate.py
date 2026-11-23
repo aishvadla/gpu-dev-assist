@@ -6,7 +6,7 @@ import anthropic
 from dotenv import load_dotenv
 
 from gpu_dev_assist.utils.logger import logger
-from gpu_dev_assist.hybrid_retrieve import build_retrievers
+from gpu_dev_assist.retrieval.hybrid import build_retrievers
 
 load_dotenv()
 

@@ -1,4 +1,4 @@
-from gpu_dev_assist.chunking_embedding import ChunkingEmbeddingPipeline
+from gpu_dev_assist.ingestion.chunking_embedding import ChunkingEmbeddingPipeline
 
 """Tests for chunk noise filtering."""
 

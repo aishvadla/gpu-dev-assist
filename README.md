@@ -189,18 +189,21 @@ The evaluation set is [data/eval/questions.jsonl](data/eval/questions.jsonl): co
 
 ```
 gpu-dev-assist/
-├── app/app.py                       # FastAPI service
+├── app/                             # FastAPI service (app.py) and web UI
 ├── src/gpu_dev_assist/
-│   ├── data_loader.py               # PDF loading
-│   ├── chunking_embedding.py        # chunking, noise filter, embeddings
-│   ├── vector_store.py              # Chroma store (clean rebuilds)
-│   ├── data_ingestion.py            # ingestion pipeline
-│   ├── dense_retrieve.py            # dense retrieval
-│   ├── keyword_retrieve.py          # BM25 retrieval
-│   ├── hybrid_retrieve.py           # reciprocal rank fusion + build_retrievers()
+│   ├── ingestion/                   # build the index (gpu-dev-assist ingest)
+│   │   ├── data_loader.py           #   PDF loading, one document per page
+│   │   ├── chunking_embedding.py    #   chunking, noise filter, embeddings
+│   │   ├── vector_store.py          #   Chroma store (clean rebuilds)
+│   │   └── data_ingestion.py        #   ingestion pipeline
+│   ├── retrieval/                   # find relevant chunks
+│   │   ├── dense.py                 #   embedding search
+│   │   ├── keyword.py               #   BM25 with stemming
+│   │   └── hybrid.py                #   reciprocal rank fusion + build_retrievers()
 │   ├── generate.py                  # cited answers and refusals
-│   ├── evaluate_retrieval.py        # retrieval metrics
-│   ├── evaluate_generation.py       # answer-level metrics and LLM judge
+│   ├── evaluation/                  # gpu-dev-assist eval retrieval|generation
+│   │   ├── retrieval.py             #   Hit@5, Recall@5, MRR@10
+│   │   └── generation.py            #   refusals, citations, LLM-judge faithfulness
 │   └── cli.py                       # gpu-dev-assist command
 ├── data/eval/questions.jsonl        # evaluation set (50 questions)
 ├── data/sources.md                  # document sources and versions

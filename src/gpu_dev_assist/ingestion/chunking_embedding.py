@@ -4,7 +4,7 @@ import re
 from gpu_dev_assist.utils.logger import logger
 from sentence_transformers import SentenceTransformer
 
-from gpu_dev_assist.data_loader import load_all_documents
+from gpu_dev_assist.ingestion.data_loader import load_all_documents
 
 class ChunkingEmbeddingPipeline:
     def __init__(self, chunk_size: int = 1000, chunk_overlap: int = 200, model_name: str = "BAAI/bge-small-en-v1.5"):
