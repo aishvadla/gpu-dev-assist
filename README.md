@@ -6,7 +6,7 @@
 
 Built by an engineer who works on GPU software: the evaluation questions and gold labels come from domain knowledge, and the most instructive failure (dense retrieval confusing *shared local memory* with *Unified Shared Memory*) was caught because of it.
 
-**[Results](#results) · [Why hybrid retrieval](#why-hybrid-retrieval-a-real-failure) · [Architecture](#architecture) · [Quick start](#quick-start) · [Evaluation report](docs/evaluation.md)**
+**[Results](#results) · [Why hybrid retrieval](#why-hybrid-retrieval-a-real-failure) · [Architecture](#architecture) · [Quick start](#quick-start) · [Deployment](#deployment-aws) · [Evaluation report](docs/evaluation.md)**
 
 ![GPU DevAssist web interface: a cited answer, then a refusal for an out-of-scope question](docs/images/app_demo.png)
 
@@ -146,7 +146,32 @@ Build the index locally first (step 4), then:
 docker build -t gpu-dev-assist .
 docker run -p 8000:8000 --env-file .env gpu-dev-assist
 ```
-The image uses CPU-only PyTorch (the embedding model runs on CPU), which cut it from 10 GB to 2.8 GB on disk (652 MB compressed). The embedding model is downloaded at build time, so the container runs offline apart from the LLM API. The image is built locally and not published, because the index contains the documents' text.
+The image uses CPU-only PyTorch (the embedding model runs on CPU), which cut it from 10 GB to 2.8 GB on disk (652 MB compressed). The embedding model is downloaded at build time, so the container runs offline apart from the LLM API. The image is never published publicly, because the index contains the documents' text; it is pushed only to a private registry (see Deployment).
+
+## Deployment (AWS)
+
+Deployed on AWS as a containerized service:
+
+```
+Browser ──► Application Load Balancer (port 80, health check /health)
+                 │
+                 ▼
+            ECS Fargate task (FastAPI on port 8000)
+                 ├─ image from a private Amazon ECR repository (immutable version tags)
+                 ├─ ANTHROPIC_API_KEY injected from AWS Secrets Manager
+                 └─ logs to CloudWatch
+```
+
+| Decision | Reason |
+|---|---|
+| Private ECR repository, immutable tags | The image contains the index (document text); each tag always means the same image, so rollbacks are exact |
+| API key in Secrets Manager, read only by the ECS task execution role | The key is never in the image, the repo or the task definition |
+| ECS Fargate behind a load balancer | No servers to manage; the load balancer health-checks `/health` and gives a stable address |
+| Health-check grace period | The embedding model and index take time to load at startup |
+| CPU-only container (1 vCPU, 3 GB) | The LLM call dominates latency, so a GPU wouldn't help |
+| IAM Identity Center sign-in, budget alert, LLM spending limit | Temporary credentials only, and capped costs for a public LLM endpoint |
+
+On AWS it answered with the same citations as locally: about 2.5 s for an answer, 0.8 s for a refusal. Deploys are manual by design (build, push to ECR, update the service), and the service runs on demand rather than continuously, to keep costs down. Tests run on every push through GitHub Actions.
 
 ## Evaluation
 
@@ -200,5 +225,5 @@ Built only on **publicly available** Intel documentation (see [data/sources.md](
 - **Retrieval:** weighted fusion (favour BM25), a cross-encoder reranker, structure-aware chunking (section headings, whole code blocks).
 - **Evaluation:** more user-style questions (ideally from real users), answer correctness against reference answers; latency and cost per query in the evaluation report.
 - **Engineering:** a document download command, API tests, a 503 response when the LLM API is unavailable.
-- **Deployment:** hosted API with rate limiting.
+- **Deployment:** deploys through GitHub Actions with OIDC (manual trigger), rate limiting and HTTPS before running continuously.
 - **Coverage:** the Khronos SYCL 2020 specification.
